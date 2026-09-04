@@ -1,0 +1,105 @@
+# Uncomment this line to define a global platform for your project
+# platform :ios, '12.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_application_path
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', '.flutter', 'ios', 'Flutter', 'Generated.xcconfig'))
+  unless File.exist?(generated_xcode_build_settings_path)
+    require_relative '../.ios/Flutter/Generated.xcconfig'
+  end
+
+  File.expand_path('..')
+end
+
+require_relative '../.ios/Flutter/Generated.xcconfig'
+
+# Prepares the iOS project for Flutter
+# This includes adding the Flutter framework and code generation
+flutter_application_path = File.expand_path('..')
+require_relative '../.ios/Flutter/Generated.xcconfig'
+
+# Add the Firebase SDK for analytics (optional)
+# firebase_analytics = Pod::Spec.new do |s|
+#   s.name             = 'FirebaseAnalytics'
+#   s.version          = '~> 10.0'
+#   s.source           = 'https://github.com/CocoaPods/Specs.git'
+#   s.source_files     = 'Firebase/Analytics/**/*'
+#   s.dependency       = 'FirebaseCore'
+# end
+
+# Add the Google Maps SDK (optional)
+# google_maps = Pod::Spec.new do |s|
+#   s.name             = 'GoogleMaps'
+#   s.version          = '~> 7.0'
+#   s.source           = 'https://github.com/CocoaPods/Specs.git'
+# end
+
+# Add the location services
+geolocator = Pod::Spec.new do |s|
+  s.name             = 'geolocator_apple'
+  s.version          = '~> 4.0'
+  s.source           = 'https://github.com/CocoaPods/Specs.git'
+end
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  # Add permissions for location services
+  permissions_path = '../Runner/Info.plist'
+  
+  # Flutter Pods
+  generated_xcode_build_settings_path = File.expand_path(File.join('.flutter', 'ios', 'Flutter', 'Generated.xcconfig'))
+  unless File.exist?(generated_xcode_build_settings_path)
+    require_relative '../.ios/Flutter/Generated.xcconfig'
+  end
+
+  flutter_application_path = File.expand_path('..')
+  symlink_dir = File.expand_path(File.join('.symlinks', 'flutter'))
+  symlink_install_dir = File.expand_path(File.join(flutter_application_path, '.ios', 'Flutter'))
+  
+  unless File.exist?(symlink_install_dir)
+    FileUtils.mkdir_p(File.dirname(symlink_install_dir))
+    File.symlink(symlink_dir, symlink_install_dir)
+  end
+
+  pod 'Flutter', :path => '.symlinks/flutter/ios'
+  pod 'flutter_localizations', :path => '.symlinks/flutter/ios/Flutter'
+
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+
+  target 'RunnerUITests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    
+    # Enable code signing for release builds
+    target.build_configurations.each do |config|
+      if config.name == 'Release'
+        config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
+        config.build_settings['DEVELOPMENT_TEAM'] = ''
+      end
+    end
+    
+    # Add permissions to Info.plist
+    if target.name == 'Runner'
+      target.build_configurations.each do |config|
+        config.build_settings['INFOPLIST_FILE'] = permissions_path
+      end
+    end
+  end
+end

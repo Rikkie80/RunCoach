@@ -1,0 +1,56 @@
+name: runcoach
+description: A running coach app that tracks your speed, time, and location during runs.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI
+  cupertino_icons: ^1.0.2
+  
+  # Navigation
+  go_router: ^13.0.0
+  
+  # Location services
+  geolocator: ^10.0.0
+  
+  # State management
+  flutter_riverpod: ^2.4.9
+  
+  # Storage
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.1
+  sqlite3_flutter_libs: ^0.5.0
+  path: ^1.8.3
+  
+  # Date/time handling
+  intl: ^0.18.1
+  
+  # Maps (optional, for route visualization)
+  # google_maps_flutter: ^4.2.0
+  
+  # Icons
+  flutter_launcher_icons: ^0.13.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon_foreground.png"

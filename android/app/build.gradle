@@ -1,0 +1,51 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+}
+
+android {
+    namespace "com.example.runcoach"
+    compileSdk flutter.compileSdkVersion
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+    
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+    
+    defaultConfig {
+        applicationId "com.example.runcoach"
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+        
+        // Required for location permissions
+        usesCleartextTraffic true
+    }
+    
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation platform(FlutterExtension.flutter.getPlatformDependencies())
+}

@@ -1,0 +1,60 @@
+# Flutter specific
+.idea/
+*.iml
+*.swp
+.DS_Store
+
+# Android
+android/app/debug
+android/app/profile
+android/app/release
+android/app/.gradle
+android/app/build
+android/app/.idea
+android/gradle
+android/.gradle
+android/build
+
+# iOS
+ios/.symlinks/
+ios/Flutter/
+ios/.flutter-plugins-dependencies
+ios/Pods/
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+ios/Runner/GeneratedPluginRegistrant.swift
+ios/Runner/Info.plist
+ios/Runner/Runner-Bridging-Header.h
+
+# Build outputs
+build/
+.dart_tool/
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+*.swp
+.DS_Store
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Logs
+*.log
+
+# Pub
+.pub-cache/
+.pub/
+
+# Flutter gen
+.lib/
+
+# Local storage
+storage/
