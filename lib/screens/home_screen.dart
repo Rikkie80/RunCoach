@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../providers/run_provider.dart';
+import '../models/run_session.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/run_action_button.dart';
 

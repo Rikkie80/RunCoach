@@ -32,11 +32,6 @@ class RunSessionNotifier extends StateNotifier<RunSession?> {
         // Update state with new location
         if (state != null) {
           state!.addLocationPoint(locationPoint);
-          state = RunSession.newSession();
-          state!.id = state!.id;
-          state!.startTime = state!.startTime;
-          state!.endTime = state!.endTime;
-          state!.locationPoints.addAll(state!.locationPoints);
         }
         
         // Provide audio feedback at kilometer milestones

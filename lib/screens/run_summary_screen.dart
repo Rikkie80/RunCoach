@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/run_session.dart';
 import '../widgets/stat_card.dart';
-import 'package:share_plus/share_plus.dart';
 
 /// Screen showing summary of a completed run
 class RunSummaryScreen extends StatelessWidget {

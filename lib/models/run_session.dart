@@ -1,4 +1,4 @@
-import 'package:path/path.dart' as path;
+import 'dart:math' as math;
 
 /// Represents a single GPS location point during a run
 class LocationPoint {
@@ -21,18 +21,18 @@ class LocationPoint {
   /// Calculate distance from another location point in meters
   double distanceTo(LocationPoint other) {
     const double earthRadius = 6371000; // meters
-    final double lat1 = latitude * (3.141592653589793 / 180);
-    final double lon1 = longitude * (3.141592653589793 / 180);
-    final double lat2 = other.latitude * (3.141592653589793 / 180);
-    final double lon2 = other.longitude * (3.141592653589793 / 180);
+    final double lat1 = latitude * (math.pi / 180);
+    final double lon1 = longitude * (math.pi / 180);
+    final double lat2 = other.latitude * (math.pi / 180);
+    final double lon2 = other.longitude * (math.pi / 180);
 
     final double dLat = lat2 - lat1;
     final double dLon = lon2 - lon1;
 
-    final double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1) * Math.cos(lat2) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    final double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1) * math.cos(lat2) *
+        math.sin(dLon / 2) * math.sin(dLon / 2);
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
     return earthRadius * c;
   }
@@ -65,10 +65,10 @@ class LocationPoint {
 
 /// Represents a complete running session
 class RunSession {
-  final String id;
-  final DateTime startTime;
+  String id;
+  DateTime startTime;
   DateTime? endTime;
-  final List<LocationPoint> locationPoints;
+  List<LocationPoint> locationPoints;
   
   // Calculated metrics
   double get totalDistanceMeters {
@@ -139,11 +139,11 @@ class RunSession {
   bool get isActive => endTime == null;
 
   /// Create a new active run session
-  RunSession.newSession() : 
-    id = DateTime.now().millisecondsSinceEpoch.toString(),
-    startTime = DateTime.now(),
-    endTime = null,
-    locationPoints = [];
+  RunSession.newSession() 
+    : id = DateTime.now().millisecondsSinceEpoch.toString(),
+      startTime = DateTime.now(),
+      endTime = null,
+      locationPoints = [];
 
   /// Add a new location point to the session
   void addLocationPoint(LocationPoint point) {
@@ -176,8 +176,6 @@ class RunSession {
       (p) => LocationPoint.fromJson(p as Map<String, dynamic>)
     ).toList();
     
-    // Use reflection to set the final field (not ideal but works for this use case)
-    // In production, we'd use a different approach
     session.locationPoints.clear();
     session.locationPoints.addAll(points);
     

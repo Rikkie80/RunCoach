@@ -46,16 +46,6 @@ class LocationService {
         return false;
       }
       
-      // Check for background location permission on Android
-      if (permission == LocationPermission.whileInUse) {
-        // For Android, we might need background permission
-        #ifdef ANDROID
-        permission = await Geolocator.requestTemporaryFullAccuracy(
-          purposeKey: 'RunCoachBackgroundLocation',
-        );
-        #endif
-      }
-      
       return true;
     } catch (e) {
       onError?.call('Permission check failed: $e');
@@ -98,23 +88,23 @@ class LocationService {
 
       // Get initial position
       final initialPosition = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(
+        locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best,
           distanceFilter: 10, // Update every 10 meters
-          timeLimit: const Duration(seconds: 30),
         ),
       );
 
       _addPosition(initialPosition);
 
       // Start position stream
-      final locationOptions = LocationSettings(
+      final locationOptions = const LocationSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 5, // Update every 5 meters
-        timeInterval: const Duration(seconds: 1),
       );
 
-      _positionStream = Geolocator.getPositionStream(locationOptions: locationOptions);
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: locationOptions,
+      );
       
       _positionStream!.listen(
         (Position position) {
@@ -148,7 +138,6 @@ class LocationService {
 
     try {
       // Cancel position stream
-      await _positionStream?.cancel();
       _positionStream = null;
       
       // End the session
@@ -158,7 +147,7 @@ class LocationService {
       _currentSession = null;
       _isTracking = false;
       
-      onSessionUpdate?.call(completedSession);
+      onSessionUpdate?.call(completedSession!);
       return completedSession;
       
     } catch (e) {
@@ -174,7 +163,6 @@ class LocationService {
     }
 
     try {
-      await _positionStream?.cancel();
       _positionStream = null;
       _isTracking = false;
       return true;
@@ -196,13 +184,14 @@ class LocationService {
     }
 
     try {
-      final locationOptions = LocationSettings(
+      final locationOptions = const LocationSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 5,
-        timeInterval: const Duration(seconds: 1),
       );
 
-      _positionStream = Geolocator.getPositionStream(locationOptions: locationOptions);
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: locationOptions,
+      );
       
       _positionStream!.listen(
         (Position position) {
@@ -260,7 +249,7 @@ class LocationService {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(
+        locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best,
         ),
       );

@@ -47,9 +47,9 @@ class RunCoachApp extends ConsumerWidget {
           color: Colors.white,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: const CardThemeData(
         elevation: 2,
-        margin: const EdgeInsets.all(8),
+        margin: EdgeInsets.all(8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
