@@ -150,6 +150,16 @@ class RunSession {
     locationPoints.add(point);
   }
 
+  /// Create a copy with an added location point
+  RunSession copyWithAddedPoint(LocationPoint point) {
+    final newSession = RunSession.newSession();
+    newSession.id = id;
+    newSession.startTime = startTime;
+    newSession.endTime = endTime;
+    newSession.locationPoints = List.from(locationPoints)..add(point);
+    return newSession;
+  }
+
   /// End the run session
   void endSession() {
     endTime = DateTime.now();

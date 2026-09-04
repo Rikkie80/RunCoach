@@ -5,12 +5,13 @@ import '../services/storage_service.dart';
 import '../services/audio_feedback_service.dart';
 
 /// Provider for managing the current run session
-final currentRunSessionProvider = StateNotifierProvider<RunSessionNotifier, RunSession?>(
-  (ref) => RunSessionNotifier(),
+final currentRunSessionProvider = NotifierProvider<RunSessionNotifier, RunSession?>(
+  () => RunSessionNotifier(),
 );
 
-class RunSessionNotifier extends StateNotifier<RunSession?> {
-  RunSessionNotifier() : super(null);
+class RunSessionNotifier extends Notifier<RunSession?> {
+  @override
+  RunSession? build() => null;
   
   final LocationService _locationService = LocationService();
   final StorageService _storageService = StorageService();
@@ -31,7 +32,12 @@ class RunSessionNotifier extends StateNotifier<RunSession?> {
       onLocationUpdate: (locationPoint) {
         // Update state with new location
         if (state != null) {
-          state!.addLocationPoint(locationPoint);
+          final newSession = RunSession.newSession();
+          newSession.id = state!.id;
+          newSession.startTime = state!.startTime;
+          newSession.endTime = state!.endTime;
+          newSession.locationPoints = List.from(state!.locationPoints)..add(locationPoint);
+          state = newSession;
         }
         
         // Provide audio feedback at kilometer milestones
