@@ -87,18 +87,12 @@ class LocationService {
       _isTracking = true;
 
       // Get initial position
-      final initialPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        distanceFilter: 10, // Update every 10 meters
-      );
+      final initialPosition = await Geolocator.getCurrentPosition();
 
       _addPosition(initialPosition);
 
       // Start position stream
-      _positionStream = Geolocator.getPositionStream(
-        desiredAccuracy: LocationAccuracy.best,
-        distanceFilter: 5, // Update every 5 meters
-      );
+      _positionStream = Geolocator.getPositionStream();
       
       _positionStream!.listen(
         (Position position) {
@@ -178,10 +172,7 @@ class LocationService {
     }
 
     try {
-      _positionStream = Geolocator.getPositionStream(
-        desiredAccuracy: LocationAccuracy.best,
-        distanceFilter: 5,
-      );
+      _positionStream = Geolocator.getPositionStream();
       
       _positionStream!.listen(
         (Position position) {
@@ -238,9 +229,7 @@ class LocationService {
         return null;
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      );
+      final position = await Geolocator.getCurrentPosition();
 
       return LocationPoint(
         latitude: position.latitude,
