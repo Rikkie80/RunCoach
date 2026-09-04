@@ -88,22 +88,16 @@ class LocationService {
 
       // Get initial position
       final initialPosition = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
-          distanceFilter: 10, // Update every 10 meters
-        ),
+        desiredAccuracy: LocationAccuracy.best,
+        distanceFilter: 10, // Update every 10 meters
       );
 
       _addPosition(initialPosition);
 
       // Start position stream
-      final locationOptions = const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 5, // Update every 5 meters
-      );
-
       _positionStream = Geolocator.getPositionStream(
-        locationSettings: locationOptions,
+        desiredAccuracy: LocationAccuracy.best,
+        distanceFilter: 5, // Update every 5 meters
       );
       
       _positionStream!.listen(
@@ -184,13 +178,9 @@ class LocationService {
     }
 
     try {
-      final locationOptions = const LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 5,
-      );
-
       _positionStream = Geolocator.getPositionStream(
-        locationSettings: locationOptions,
+        desiredAccuracy: LocationAccuracy.best,
+        distanceFilter: 5,
       );
       
       _positionStream!.listen(
@@ -249,9 +239,7 @@ class LocationService {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
-        ),
+        desiredAccuracy: LocationAccuracy.best,
       );
 
       return LocationPoint(
