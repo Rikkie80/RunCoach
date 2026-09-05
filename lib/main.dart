@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:geolocator/geolocator.dart';
 
 import 'app.dart';
 
@@ -15,61 +14,22 @@ void main() async {
   await initializeDateFormatting();
   
   // ============================================
-  // PERMISSION HANDLING - This is the critical part
+  // PERMISSION HANDLING - Simplified and reliable
   // ============================================
   
-  debugPrint('=== PERMISSION STATUS AT STARTUP ===');
+  debugPrint('=== STARTING RUN COACH ===');
+  debugPrint('Requesting location permissions...');
   
-  // First, check if location services are enabled on the device
-  final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
-  debugPrint('[main.dart] Location service enabled: $isLocationEnabled');
+  // Request location permissions - this is the ONLY thing we need to do here
+  // The app will handle the rest in the UI
+  final status = await Permission.locationWhenInUse.request();
+  debugPrint('Location permission result: $status');
   
-  if (!isLocationEnabled) {
-    debugPrint('[main.dart] Location services are DISABLED - opening settings');
-    await openAppSettings();
-    // Wait a bit for user to enable
-    await Future.delayed(const Duration(seconds: 2));
+  // For Android 10+, also request background location
+  if (status == PermissionStatus.granted) {
+    final backgroundStatus = await Permission.locationAlways.request();
+    debugPrint('Background location permission result: $backgroundStatus');
   }
-  
-  // Check and request location permissions
-  final whenInUseStatus = await Permission.locationWhenInUse.status;
-  debugPrint('[main.dart] locationWhenInUse status: $whenInUseStatus');
-  
-  if (whenInUseStatus == PermissionStatus.denied) {
-    debugPrint('[main.dart] Requesting locationWhenInUse permission...');
-    final result = await Permission.locationWhenInUse.request();
-    debugPrint('[main.dart] locationWhenInUse request result: $result');
-  }
-  
-  // For Android 10+, we need to request background location separately
-  // But only after whenInUse is granted
-  final alwaysStatus = await Permission.locationAlways.status;
-  debugPrint('[main.dart] locationAlways status: $alwaysStatus');
-  
-  if (whenInUseStatus == PermissionStatus.granted && alwaysStatus == PermissionStatus.denied) {
-    debugPrint('[main.dart] Requesting locationAlways (background) permission...');
-    final result = await Permission.locationAlways.request();
-    debugPrint('[main.dart] locationAlways request result: $result');
-  }
-  
-  // Also check with Geolocator to ensure compatibility
-  try {
-    final geoPermission = await Geolocator.checkPermission();
-    debugPrint('[main.dart] Geolocator permission: $geoPermission');
-    
-    if (geoPermission == LocationPermission.denied) {
-      debugPrint('[main.dart] Requesting Geolocator permission...');
-      await Geolocator.requestPermission();
-    }
-  } catch (e) {
-    debugPrint('[main.dart] Geolocator check failed: $e');
-  }
-  
-  // Final check
-  final finalWhenInUse = await Permission.locationWhenInUse.status;
-  final finalAlways = await Permission.locationAlways.status;
-  debugPrint('[main.dart] FINAL - locationWhenInUse: $finalWhenInUse');
-  debugPrint('[main.dart] FINAL - locationAlways: $finalAlways');
   
   debugPrint('=== STARTING APP ===');
   

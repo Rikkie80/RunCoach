@@ -37,6 +37,15 @@ android {
             minifyEnabled false
             shrinkResources false
             signingConfig signingConfigs.debug
+            
+            // IMPORTANT: Disable proguard for location services
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        
+        debug {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.debug
         }
     }
 }
@@ -47,4 +56,8 @@ flutter {
 
 dependencies {
     implementation platform(FlutterExtension.flutter.getPlatformDependencies())
+    
+    // Required for geolocator background services
+    implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-service:2.6.2'
 }
