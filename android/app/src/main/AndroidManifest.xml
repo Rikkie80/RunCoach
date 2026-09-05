@@ -3,20 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.runcoach">
 
-    <!-- ===== LOCATIE PERMISSIES ==== -->
+    <!-- ============================================ -->
+    <!-- LOCATION PERMISSIONS (REQUIRED FOR ANDROID 12+) -->
+    <!-- ============================================ -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    
-    <!-- Achtergrond locatie - voor Android 10+ (API 29) -->
-    <!-- Op Android 13+ (API 33) moet dit apart gevraagd worden -->
-    <uses-permission 
-        android:name="android.permission.ACCESS_BACKGROUND_LOCATION" 
-        tools:node="merge" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <!-- Foreground service voor locatie tracking -->
+    <!-- ============================================ -->
+    <!-- FOREGROUND SERVICE PERMISSIONS -->
+    <!-- ============================================ -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- Voor notificaties en achtergrond services -->
+    
+    <!-- Optional permissions for better tracking -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -24,13 +23,17 @@
     <application
         android:label="Run Coach"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:requestLegacyExternalStorage="true"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         tools:targetApi="34">
 
-        <!-- ===== MAIN ACTIVITY ==== -->
+        <!-- ============================================ -->
+        <!-- MAIN ACTIVITY -->
+        <!-- ============================================ -->
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
@@ -54,19 +57,22 @@
             </intent-filter>
         </activity>
 
-        <!-- ===== LOCATION SERVICE ==== -->
+        <!-- ============================================ -->
+        <!-- GEOLOCATOR SERVICES (REQUIRED FOR BACKGROUND TRACKING) -->
+        <!-- ============================================ -->
         <service
             android:name="com.baseflow.geolocator.service.LocationService"
             android:foregroundServiceType="location"
             android:exported="false" />
             
-        <!-- ===== FOREGROUND SERVICE NOTIFICATION ==== -->
         <service
             android:name="com.baseflow.geolocator.service.LocationForegroundService"
             android:foregroundServiceType="location"
             android:exported="false" />
             
-        <!-- ===== FOREGROUND SERVICE NOTIFICATION CHANNEL ==== -->
+        <!-- ============================================ -->
+        <!-- GEOLOCATOR NOTIFICATION CHANNEL -->
+        <!-- ============================================ -->
         <meta-data
             android:name="com.baseflow.geolocator.service.notification_channel"
             android:value="@string/geolocator_notification_channel" />
@@ -78,5 +84,13 @@
         <meta-data
             android:name="com.baseflow.geolocator.service.notification_icon"
             android:resource="@mipmap/ic_launcher" />
+            
+        <meta-data
+            android:name="com.baseflow.geolocator.service.notification_title"
+            android:value="@string/location_service_notification_title" />
+            
+        <meta-data
+            android:name="com.baseflow.geolocator.service.notification_text"
+            android:value="@string/location_service_notification_text" />
     </application>
 </manifest>
