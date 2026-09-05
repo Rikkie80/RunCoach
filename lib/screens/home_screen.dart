@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../providers/run_provider.dart';
 import '../models/run_session.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/run_action_button.dart';
+import '../services/location_service.dart';
 
 /// Home screen showing run history and quick start options
 class HomeScreen extends ConsumerWidget {
@@ -38,6 +40,10 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Location permission status
+              _buildPermissionStatus(context, ref),
+              const SizedBox(height: 16),
+              
               // Quick action buttons
               _buildQuickActions(context, isRunActive, ref),
               const SizedBox(height: 24),
@@ -55,6 +61,21 @@ class HomeScreen extends ConsumerWidget {
       floatingActionButton: RunActionButton(
         isRunActive: isRunActive,
         onStart: () async {
+          // Check location permissions before starting
+          final locationService = ref.read(locationServiceProvider);
+          final hasPermissions = await locationService.checkAndRequestPermissions();
+          
+          if (!hasPermissions) {
+            // Show error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please enable location permissions to start a run'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+          
           final notifier = ref.read(currentRunSessionProvider.notifier);
           final success = await notifier.startRun();
           if (success) {
@@ -77,6 +98,118 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  /// Build permission status widget
+  Widget _buildPermissionStatus(BuildContext context, WidgetRef ref) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final locationService = ref.watch(locationServiceProvider);
+        
+        return FutureBuilder<bool>(
+          future: locationService.checkLocationService(),
+          builder: (context, serviceSnapshot) {
+            if (serviceSnapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox.shrink();
+            }
+            
+            final serviceEnabled = serviceSnapshot.data ?? false;
+            
+            return FutureBuilder<PermissionStatus>(
+              future: Permission.locationWhenInUse.status,
+              builder: (context, permissionSnapshot) {
+                if (permissionSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(width: 12),
+                          Text('Checking location permissions...'),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                final permissionStatus = permissionSnapshot.data ?? PermissionStatus.denied;
+                final hasPermission = permissionStatus == PermissionStatus.granted;
+                
+                if (!serviceEnabled || !hasPermission) {
+                  return Card(
+                    color: Colors.orange.withOpacity(0.1),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            !serviceEnabled 
+                                ? Icons.location_disabled 
+                                : Icons.location_off,
+                            color: Colors.orange,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  !serviceEnabled 
+                                      ? 'Location services are disabled' 
+                                      : 'Location permission required',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  !serviceEnabled 
+                                      ? 'Please enable location services in your device settings' 
+                                      : 'Tap to enable location permission',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (!serviceEnabled) {
+                                // Open device location settings
+                                await openAppSettings();
+                              } else {
+                                // Request permission
+                                final status = await Permission.locationWhenInUse.request();
+                                if (status == PermissionStatus.granted) {
+                                  ref.refresh(currentRunSessionProvider);
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            child: const Text('Enable', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                return const SizedBox.shrink();
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   /// Build quick action buttons
   Widget _buildQuickActions(BuildContext context, bool isRunActive, WidgetRef ref) {
     return Card(
@@ -96,6 +229,19 @@ class HomeScreen extends ConsumerWidget {
                   onTap: isRunActive 
                     ? null 
                     : () async {
+                        final locationService = ref.read(locationServiceProvider);
+                        final hasPermissions = await locationService.checkAndRequestPermissions();
+                        
+                        if (!hasPermissions) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enable location permissions to start a run'),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          return;
+                        }
+                        
                         final notifier = ref.read(currentRunSessionProvider.notifier);
                         final success = await notifier.startRun();
                         if (success) {

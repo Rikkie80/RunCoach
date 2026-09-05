@@ -19,50 +19,54 @@ class LocationService {
   Function(RunSession)? onSessionUpdate;
   Function(String)? onError;
 
-  /// Check if location services are available
-  Future<bool> checkLocationService() async {
+  /// Initialize the location service
+  Future<bool> initialize() async {
     try {
-      return await Geolocator.isLocationServiceEnabled();
+      // Check if location services are enabled
+      final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!isLocationEnabled) {
+        onError?.call('Location services are disabled. Please enable location services in your device settings.');
+        return false;
+      }
+      
+      // Check and request permissions
+      return await _checkAndRequestPermissions();
     } catch (e) {
-      onError?.call('Location services not available: $e');
+      onError?.call('Failed to initialize location service: $e');
       return false;
     }
   }
 
   /// Check and request location permissions
-  Future<bool> checkAndRequestPermissions() async {
+  Future<bool> _checkAndRequestPermissions() async {
     try {
-      // Check current permission status
       LocationPermission permission = await Geolocator.checkPermission();
       
+      // If permissions are denied, request them
       if (permission == LocationPermission.denied) {
-        // Request permissions
         permission = await Geolocator.requestPermission();
-        
-        if (permission == LocationPermission.denied) {
-          onError?.call('Location permissions denied. Please enable location permissions in settings.');
-          // Try to open app settings
-          if (defaultTargetPlatform == TargetPlatform.android) {
-            _openAppSettings();
-          }
-          return false;
-        }
+      }
+      
+      // Check the result
+      if (permission == LocationPermission.denied) {
+        onError?.call('Location permissions denied. Please allow location access in app settings.');
+        return false;
       }
       
       if (permission == LocationPermission.deniedForever) {
         onError?.call('Location permissions permanently denied. Please enable in app settings.');
-        // Try to open app settings
+        // For Android, try to open app settings
         if (defaultTargetPlatform == TargetPlatform.android) {
           _openAppSettings();
         }
         return false;
       }
       
-      // For Android 10+, check background location permission
+      // For Android 10+, check background location
       if (defaultTargetPlatform == TargetPlatform.android) {
-        final isBackgroundLocationAvailable = await Geolocator.isBackgroundLocationEnabled();
-        if (!isBackgroundLocationAvailable) {
-          onError?.call('Background location not enabled. Please enable in settings.');
+        final isBackgroundEnabled = await Geolocator.isBackgroundLocationEnabled();
+        if (!isBackgroundEnabled) {
+          onError?.call('Background location access is required. Please enable it in app settings.');
           return false;
         }
       }
@@ -74,18 +78,28 @@ class LocationService {
     }
   }
 
+  /// Check if location services are available
+  Future<bool> checkLocationService() async {
+    try {
+      return await Geolocator.isLocationServiceEnabled();
+    } catch (e) {
+      onError?.call('Location services not available: $e');
+      return false;
+    }
+  }
+
+  /// Check and request location permissions (public method)
+  Future<bool> checkAndRequestPermissions() async {
+    return await _checkAndRequestPermissions();
+  }
+
   /// Open app settings for permission management
   Future<void> _openAppSettings() async {
-    try {
-      // This will open the app settings page
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        // For Android, we can use platform channels or url_launcher
-        // This is a simple approach that works on most devices
-        print('Please enable location permissions in app settings');
-      }
-    } catch (e) {
-      print('Could not open app settings: $e');
+    if (kDebugMode) {
+      print('[LocationService] Please enable location permissions in app settings');
     }
+    // In a real app, you would use url_launcher to open settings
+    // For now, we just print the message
   }
 
   /// Start tracking location for a new run session
@@ -103,16 +117,9 @@ class LocationService {
     this.onSessionUpdate = onSessionUpdate;
     this.onError = onError;
 
-    // Check location services
-    final locationServiceEnabled = await checkLocationService();
-    if (!locationServiceEnabled) {
-      onError?.call('Please enable location services');
-      return false;
-    }
-
-    // Check permissions
-    final permissionsGranted = await checkAndRequestPermissions();
-    if (!permissionsGranted) {
+    // Initialize and check permissions
+    final initialized = await initialize();
+    if (!initialized) {
       return false;
     }
 
@@ -121,20 +128,22 @@ class LocationService {
       _currentSession = RunSession.newSession();
       _isTracking = true;
 
-      // Get initial position
+      // Get initial position with high accuracy
       final initialPosition = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best,
-          distanceFilter: 10,
+          distanceFilter: 0,
+          timeLimit: Duration(seconds: 10),
         ),
       );
 
       _addPosition(initialPosition);
 
-      // Start position stream
+      // Start position stream with optimal settings
       final locationOptions = const LocationSettings(
         accuracy: LocationAccuracy.best,
-        distanceFilter: 5,
+        distanceFilter: 5, // Update every 5 meters
+        timeInterval: Duration(seconds: 1),
       );
 
       _positionStream = Geolocator.getPositionStream(
@@ -152,6 +161,7 @@ class LocationService {
         onDone: () {
           stopTracking();
         },
+        cancelOnError: false,
       );
 
       onSessionUpdate?.call(_currentSession!);
@@ -224,6 +234,7 @@ class LocationService {
       final locationOptions = const LocationSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 5,
+        timeInterval: Duration(seconds: 1),
       );
 
       _positionStream = Geolocator.getPositionStream(
@@ -241,6 +252,7 @@ class LocationService {
         onDone: () {
           stopTracking();
         },
+        cancelOnError: false,
       );
 
       _isTracking = true;
@@ -282,6 +294,7 @@ class LocationService {
       final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied || 
           permission == LocationPermission.deniedForever) {
+        onError?.call('Location permissions not granted');
         return null;
       }
 
@@ -303,6 +316,28 @@ class LocationService {
     } catch (e) {
       onError?.call('Failed to get current location: $e');
       return null;
+    }
+  }
+
+  /// Request location permissions explicitly
+  Future<bool> requestLocationPermissions() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      
+      if (permission == LocationPermission.denied || 
+          permission == LocationPermission.deniedForever) {
+        onError?.call('Please enable location permissions in app settings');
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      onError?.call('Failed to request permissions: $e');
+      return false;
     }
   }
 

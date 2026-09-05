@@ -3,20 +3,26 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.runcoach">
 
-    <!-- Locatie permissies -->
+    <!-- ===== LOCATIE PERMISSIES (VERPLICHT VOOR ANDROID 12+) ==== -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="merge" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    
+    <!-- Voor notificaties en achtergrond services -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:label="Run Coach"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:allowBackup="false"
+        tools:targetApi="34">
 
+        <!-- ===== MAIN ACTIVITY ==== -->
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
@@ -25,24 +31,30 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-
+            
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
-
+            
             <meta-data
                 android:name="io.flutter.embedding.android.SplashScreenDrawable"
                 android:resource="@drawable/launch_background" />
-
+            
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Service for background location tracking -->
+        <!-- ===== LOCATION SERVICE (voor achtergrond tracking) ==== -->
         <service
             android:name="com.baseflow.geolocator.service.LocationService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+            
+        <!-- ===== FOREGROUND SERVICE NOTIFICATION ==== -->
+        <service
+            android:name="com.baseflow.geolocator.service.LocationForegroundService"
             android:foregroundServiceType="location"
             android:exported="false" />
     </application>
