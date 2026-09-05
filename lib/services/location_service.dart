@@ -89,7 +89,7 @@ class LocationService {
       }
       
       // For Android 10+ (API 29+), check background location
-      // This is only needed if we want to track in the background
+      // On Android 16 (API 35), this requires explicit consent
       if (defaultTargetPlatform == TargetPlatform.android) {
         final isBackgroundEnabled = await Geolocator.isBackgroundLocationEnabled();
         debugPrint('[LocationService] Background location enabled: $isBackgroundEnabled');
@@ -135,14 +135,6 @@ class LocationService {
   /// Check and request location permissions (public method)
   Future<bool> checkAndRequestPermissions() async {
     return await _checkAndRequestPermissions();
-  }
-
-  /// Open app settings for permission management
-  Future<void> _openAppSettings() async {
-    if (kDebugMode) {
-      debugPrint('[LocationService] Please enable location permissions in app settings');
-    }
-    await openAppSettings();
   }
 
   /// Start tracking location for a new run session
@@ -293,7 +285,7 @@ class LocationService {
 
     if (_isTracking) {
       debugPrint('[LocationService] Already tracking');
-      return true; // Already tracking
+      return true;
     }
 
     try {

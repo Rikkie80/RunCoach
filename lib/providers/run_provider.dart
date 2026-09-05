@@ -21,7 +21,6 @@ class RunSessionNotifier extends Notifier<RunSession?> {
   /// Start a new run session
   Future<bool> startRun() async {
     if (state != null) {
-      // Already have an active session
       debugPrint('[RunSessionNotifier] Already have an active session');
       return false;
     }
@@ -35,9 +34,7 @@ class RunSessionNotifier extends Notifier<RunSession?> {
     final success = await _locationService.startTracking(
       onLocationUpdate: (locationPoint) {
         debugPrint('[RunSessionNotifier] Location update received');
-        // Update the existing session with new location
         if (state != null) {
-          debugPrint('[RunSessionNotifier] Adding location point to existing session');
           final updatedSession = state!.copyWithAddedPoint(locationPoint);
           state = updatedSession;
           
@@ -57,7 +54,6 @@ class RunSessionNotifier extends Notifier<RunSession?> {
     );
 
     if (success) {
-      // Create new session from location service
       final session = _locationService.currentSession;
       if (session != null) {
         debugPrint('[RunSessionNotifier] New session created: ${session.id}');

@@ -4,21 +4,30 @@
     package="com.example.runcoach">
 
     <!-- ============================================ -->
-    <!-- LOCATION PERMISSIONS (REQUIRED FOR ANDROID 12+) -->
+    <!-- LOCATION PERMISSIONS (ANDROID 16 / API 35 COMPATIBLE) -->
     <!-- ============================================ -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-
-    <!-- ============================================ -->
-    <!-- FOREGROUND SERVICE PERMISSIONS -->
-    <!-- ============================================ -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     
-    <!-- Optional permissions for better tracking -->
+    <!-- Fine location - required for precise GPS tracking -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    
+    <!-- Coarse location - fallback -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    
+    <!-- Background location - for Android 10-15 -->
+    <!-- On Android 16 (API 35), this requires explicit user consent -->
+    <uses-permission 
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        android:maxSdkVersion="34" />
+    
+    <!-- Foreground service permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    
+    <!-- Wake lock - to keep CPU awake during tracking -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- Vibrate - for notifications -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:label="Run Coach"
@@ -29,7 +38,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        tools:targetApi="34">
+        tools:targetApi="35">
 
         <!-- ============================================ -->
         <!-- MAIN ACTIVITY -->
@@ -58,7 +67,7 @@
         </activity>
 
         <!-- ============================================ -->
-        <!-- GEOLOCATOR SERVICES (REQUIRED FOR BACKGROUND TRACKING) -->
+        <!-- GEOLOCATOR SERVICES -->
         <!-- ============================================ -->
         <service
             android:name="com.baseflow.geolocator.service.LocationService"
@@ -92,5 +101,9 @@
         <meta-data
             android:name="com.baseflow.geolocator.service.notification_text"
             android:value="@string/location_service_notification_text" />
+            
+        <meta-data
+            android:name="com.baseflow.geolocator.service.foreground_service_type"
+            android:value="location" />
     </application>
 </manifest>

@@ -14,24 +14,40 @@ void main() async {
   await initializeDateFormatting();
   
   // ============================================
-  // PERMISSION HANDLING - Simplified and reliable
+  // PERMISSION HANDLING FOR ANDROID 16
   // ============================================
   
-  debugPrint('=== STARTING RUN COACH ===');
-  debugPrint('Requesting location permissions...');
+  debugPrint('=== STARTING RUN COACH ON ANDROID 16 ===');
   
-  // Request location permissions - this is the ONLY thing we need to do here
-  // The app will handle the rest in the UI
-  final status = await Permission.locationWhenInUse.request();
-  debugPrint('Location permission result: $status');
+  // For Android 16, we need to request permissions carefully
+  // Step 1: Request locationWhenInUse
+  debugPrint('Requesting locationWhenInUse permission...');
+  final whenInUseStatus = await Permission.locationWhenInUse.request();
+  debugPrint('locationWhenInUse: $whenInUseStatus');
   
-  // For Android 10+, also request background location
-  if (status == PermissionStatus.granted) {
-    final backgroundStatus = await Permission.locationAlways.request();
-    debugPrint('Background location permission result: $backgroundStatus');
+  // Step 2: If granted, request locationAlways for background tracking
+  if (whenInUseStatus == PermissionStatus.granted) {
+    debugPrint('Requesting locationAlways (background) permission...');
+    final alwaysStatus = await Permission.locationAlways.request();
+    debugPrint('locationAlways: $alwaysStatus');
+  } else {
+    debugPrint('locationWhenInUse denied - cannot request background location');
   }
   
-  debugPrint('=== STARTING APP ===');
+  // Step 3: For Android 16, also request foreground service permission
+  // This is required for continuous location tracking
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      debugPrint('Requesting foreground service permission...');
+      final foregroundStatus = await Permission.foregroundService.request();
+      debugPrint('foregroundService: $foregroundStatus');
+    } catch (e) {
+      debugPrint('Foreground service permission not available: $e');
+    }
+  }
+  
+  debugPrint('=== ALL PERMISSIONS REQUESTED ===');
+  debugPrint('Starting app...');
   
   runApp(
     const ProviderScope(

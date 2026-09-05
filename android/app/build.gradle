@@ -23,13 +23,13 @@ android {
     defaultConfig {
         applicationId "com.example.runcoach"
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 35  // Android 16 = API 35
         versionCode flutter.versionCode
         versionName flutter.versionName
         multiDexEnabled true
         
         // Required for location permissions
-        usesCleartextTraffic true
+        usesCleartextTraffic false
     }
 
     buildTypes {
@@ -38,7 +38,7 @@ android {
             shrinkResources false
             signingConfig signingConfigs.debug
             
-            // IMPORTANT: Disable proguard for location services
+            // Disable proguard for location services
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         
@@ -55,9 +55,14 @@ flutter {
 }
 
 dependencies {
-    implementation platform(FlutterExtension.flutter.getPlatformDependencies())
+    implementation platform(FlutterExtension.flutter.getPlatformDependencies)
     
-    // Required for geolocator background services
-    implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-service:2.6.2'
+    // Required for geolocator plugin on Android 16
+    implementation 'androidx.lifecycle:lifecycle-process:2.8.0'
+    implementation 'androidx.lifecycle:lifecycle-service:2.8.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime:2.8.0'
+    implementation 'androidx.lifecycle:lifecycle-common:2.8.0'
+    
+    // For background location on Android 16
+    implementation 'androidx.work:work-runtime:2.9.0'
 }

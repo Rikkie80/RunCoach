@@ -147,6 +147,23 @@ class HomeScreen extends ConsumerWidget {
       return false;
     }
 
+    // For Android 16, also check foreground service permission
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final foregroundStatus = await Permission.foregroundService.status;
+      if (foregroundStatus == PermissionStatus.denied) {
+        final result = await Permission.foregroundService.request();
+        if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Foreground service permission is required for location tracking'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+          return false;
+        }
+      }
+    }
+
     // Check Geolocator permission as well
     try {
       final geoPermission = await Geolocator.checkPermission();
@@ -550,146 +567,202 @@ class PermissionStatusWidget extends ConsumerWidget {
                 final backgroundStatus = backgroundSnapshot.data ?? PermissionStatus.denied;
                 final hasBackground = backgroundStatus == PermissionStatus.granted;
 
-                if (!serviceEnabled) {
-                  return Card(
-                    color: Colors.red.withOpacity(0.1),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.location_disabled, color: Colors.red, size: 32),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Location Services Disabled',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Please enable location services in your device settings.',
-                                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: openAppSettings,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            ),
-                            child: const Text('Enable', style: TextStyle(fontSize: 14)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
+                // For Android 16, also check foreground service
+                return FutureBuilder<PermissionStatus>(
+                  future: Permission.foregroundService.status,
+                  builder: (context, foregroundSnapshot) {
+                    final foregroundStatus = foregroundSnapshot.data ?? PermissionStatus.denied;
+                    final hasForeground = foregroundStatus == PermissionStatus.granted;
 
-                if (!hasWhenInUse) {
-                  return Card(
-                    color: Colors.orange.withOpacity(0.1),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.location_off, color: Colors.orange, size: 32),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Location Permission Required',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.orange,
-                                  ),
+                    if (!serviceEnabled) {
+                      return Card(
+                        color: Colors.red.withOpacity(0.1),
+                        elevation: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_disabled, color: Colors.red, size: 32),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Location Services Disabled',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Please enable location services in your device settings.',
+                                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Tap Enable to grant location permission.',
-                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: openAppSettings,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 ),
-                              ],
-                            ),
+                                child: const Text('Enable', style: TextStyle(fontSize: 14)),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final result = await Permission.locationWhenInUse.request();
-                              if (result == PermissionStatus.granted) {
-                                await Permission.locationAlways.request();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            ),
-                            child: const Text('Enable', style: TextStyle(fontSize: 14)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
+                        ),
+                      );
+                    }
 
-                if (hasWhenInUse && !hasBackground) {
-                  return Card(
-                    color: Colors.blue.withOpacity(0.1),
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline, color: Colors.blue, size: 24),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Background Location Not Enabled',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: Colors.blue,
-                                  ),
+                    if (!hasWhenInUse) {
+                      return Card(
+                        color: Colors.orange.withOpacity(0.1),
+                        elevation: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_off, color: Colors.orange, size: 32),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Location Permission Required',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Tap Enable to grant location permission.',
+                                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  'Enable "Allow all the time" for background tracking.',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final result = await Permission.locationWhenInUse.request();
+                                  if (result == PermissionStatus.granted) {
+                                    await Permission.locationAlways.request();
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 ),
-                              ],
-                            ),
+                                child: const Text('Enable', style: TextStyle(fontSize: 14)),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: openAppSettings,
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            ),
-                            child: const Text('Settings', style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
+                        ),
+                      );
+                    }
 
-                return const SizedBox.shrink();
+                    if (hasWhenInUse && !hasForeground) {
+                      return Card(
+                        color: Colors.orange.withOpacity(0.1),
+                        elevation: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.settings, color: Colors.orange, size: 32),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Foreground Service Permission Required',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Tap Enable for foreground service permission.',
+                                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  await Permission.foregroundService.request();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                ),
+                                child: const Text('Enable', style: TextStyle(fontSize: 14)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (hasWhenInUse && !hasBackground) {
+                      return Card(
+                        color: Colors.blue.withOpacity(0.1),
+                        elevation: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline, color: Colors.blue, size: 24),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Background Location Not Enabled',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      'Enable "Allow all the time" for background tracking.',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton(
+                                onPressed: openAppSettings,
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                ),
+                                child: const Text('Settings', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return const SizedBox.shrink();
+                  },
+                );
               },
             );
           },

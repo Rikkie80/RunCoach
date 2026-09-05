@@ -16,8 +16,8 @@ dependencies:
   # Navigation
   go_router: ^18.0.1
   
-  # Location services
-  geolocator: ^14.0.3
+  # Location services - UPGRADED FOR ANDROID 16
+  geolocator: ^15.0.0
   
   # State management
   flutter_riverpod: ^3.4.3
@@ -31,17 +31,11 @@ dependencies:
   # Date/time handling
   intl: ^0.20.3
   
-  # Maps (optional, for route visualization)
-  # google_maps_flutter: ^4.2.0
-  
-  # Icons
-  flutter_launcher_icons: ^0.14.4
+  # Permissions - UPGRADED FOR ANDROID 16
+  permission_handler: ^11.3.0
   
   # Share functionality
   share_plus: ^13.3.0
-  
-  # Permissions
-  permission_handler: ^11.0.0
 
 dev_dependencies:
   flutter_test:
