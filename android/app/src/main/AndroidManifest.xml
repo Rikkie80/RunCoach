@@ -3,12 +3,29 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.runcoach">
 
-    <!-- ===== LOCATIE PERMISSIES (VERPLICHT VOOR ANDROID 12+) ==== -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- ===== LOCATIE PERMISSIES ==== -->
+    <!-- Voor Android 12 en hoger -->
+    <uses-permission 
+        android:name="android.permission.ACCESS_FINE_LOCATION" 
+        tools:node="merge" />
     
+    <uses-permission 
+        android:name="android.permission.ACCESS_COARSE_LOCATION" 
+        tools:node="merge" />
+    
+    <!-- Achtergrond locatie - vereist voor Android 10+ (Q) -->
+    <!-- Voor Android 13+ (Tiramisu) moet maxSdkVersion worden gespecificeerd -->
+    <uses-permission 
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        android:maxSdkVersion="32"
+        tools:node="merge" 
+        tools:targetApi="q" />
+
+    <!-- Foreground service voor locatie tracking -->
+    <uses-permission 
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="merge" />
+
     <!-- Voor notificaties en achtergrond services -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -20,6 +37,7 @@
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
+        android:fullBackupContent="false"
         tools:targetApi="34">
 
         <!-- ===== MAIN ACTIVITY ==== -->

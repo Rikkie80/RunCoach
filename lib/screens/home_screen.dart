@@ -40,8 +40,8 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Location permission status
-              _buildPermissionStatus(context, ref),
+              // Location permission status - THIS IS THE KEY WIDGET
+              const PermissionStatusWidget(),
               const SizedBox(height: 16),
               
               // Quick action buttons
@@ -61,18 +61,9 @@ class HomeScreen extends ConsumerWidget {
       floatingActionButton: RunActionButton(
         isRunActive: isRunActive,
         onStart: () async {
-          // Check location permissions before starting
-          final locationService = ref.read(locationServiceProvider);
-          final hasPermissions = await locationService.checkAndRequestPermissions();
-          
+          // Check permissions before starting
+          final hasPermissions = await _checkAndRequestPermissions(context);
           if (!hasPermissions) {
-            // Show error message
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enable location permissions to start a run'),
-                duration: Duration(seconds: 3),
-              ),
-            );
             return;
           }
           
@@ -83,6 +74,11 @@ class HomeScreen extends ConsumerWidget {
           }
         },
         onResume: () async {
+          final hasPermissions = await _checkAndRequestPermissions(context);
+          if (!hasPermissions) {
+            return;
+          }
+          
           final notifier = ref.read(currentRunSessionProvider.notifier);
           await notifier.resumeRun();
           context.push('/run');
@@ -98,116 +94,68 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  /// Build permission status widget
-  Widget _buildPermissionStatus(BuildContext context, WidgetRef ref) {
-    return Consumer(
-      builder: (context, ref, child) {
-        final locationService = ref.watch(locationServiceProvider);
-        
-        return FutureBuilder<bool>(
-          future: locationService.checkLocationService(),
-          builder: (context, serviceSnapshot) {
-            if (serviceSnapshot.connectionState == ConnectionState.waiting) {
-              return const SizedBox.shrink();
-            }
-            
-            final serviceEnabled = serviceSnapshot.data ?? false;
-            
-            return FutureBuilder<PermissionStatus>(
-              future: Permission.locationWhenInUse.status,
-              builder: (context, permissionSnapshot) {
-                if (permissionSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(width: 12),
-                          Text('Checking location permissions...'),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                
-                final permissionStatus = permissionSnapshot.data ?? PermissionStatus.denied;
-                final hasPermission = permissionStatus == PermissionStatus.granted;
-                
-                if (!serviceEnabled || !hasPermission) {
-                  return Card(
-                    color: Colors.orange.withOpacity(0.1),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            !serviceEnabled 
-                                ? Icons.location_disabled 
-                                : Icons.location_off,
-                            color: Colors.orange,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  !serviceEnabled 
-                                      ? 'Location services are disabled' 
-                                      : 'Location permission required',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  !serviceEnabled 
-                                      ? 'Please enable location services in your device settings' 
-                                      : 'Tap to enable location permission',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () async {
-                              if (!serviceEnabled) {
-                                // Open device location settings
-                                await openAppSettings();
-                              } else {
-                                // Request permission
-                                final status = await Permission.locationWhenInUse.request();
-                                if (status == PermissionStatus.granted) {
-                                  ref.refresh(currentRunSessionProvider);
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            child: const Text('Enable', style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                
-                return const SizedBox.shrink();
-              },
-            );
-          },
+  /// Check and request permissions with user feedback
+  Future<bool> _checkAndRequestPermissions(BuildContext context) async {
+    // Check location service status
+    final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isLocationEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enable location services in your device settings'),
+          duration: Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'OPEN SETTINGS',
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+      return false;
+    }
+
+    // Check and request whenInUse permission
+    final whenInUseStatus = await Permission.locationWhenInUse.status;
+    if (whenInUseStatus == PermissionStatus.denied) {
+      final result = await Permission.locationWhenInUse.request();
+      if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permission is required to track your runs'),
+            duration: Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'REQUEST AGAIN',
+              onPressed: null,
+            ),
+          ),
         );
-      },
-    );
+        return false;
+      }
+    } else if (whenInUseStatus == PermissionStatus.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Location permission is permanently denied. Please enable it in app settings.'),
+          duration: Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'OPEN SETTINGS',
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+      return false;
+    }
+
+    // For Android 10+, check background location
+    final backgroundStatus = await Permission.locationAlways.status;
+    if (backgroundStatus == PermissionStatus.denied) {
+      // Request background location
+      final result = await Permission.locationAlways.request();
+      if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
+        // This is OK - we can still track when app is in foreground
+        // But show a message that background tracking won't work
+        debugPrint('Background location not granted, but foreground tracking will work');
+      }
+    }
+
+    return true;
   }
 
   /// Build quick action buttons
@@ -229,18 +177,8 @@ class HomeScreen extends ConsumerWidget {
                   onTap: isRunActive 
                     ? null 
                     : () async {
-                        final locationService = ref.read(locationServiceProvider);
-                        final hasPermissions = await locationService.checkAndRequestPermissions();
-                        
-                        if (!hasPermissions) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please enable location permissions to start a run'),
-                              duration: Duration(seconds: 3),
-                            ),
-                          );
-                          return;
-                        }
+                        final hasPermissions = await _checkAndRequestPermissions(context);
+                        if (!hasPermissions) return;
                         
                         final notifier = ref.read(currentRunSessionProvider.notifier);
                         final success = await notifier.startRun();
@@ -561,5 +499,167 @@ class HomeScreen extends ConsumerWidget {
     final minutes = paceMinKm.floor();
     final seconds = ((paceMinKm - minutes) * 60).round();
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Separate widget for permission status to ensure it rebuilds properly
+class PermissionStatusWidget extends ConsumerWidget {
+  const PermissionStatusWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<bool>(
+      future: Geolocator.isLocationServiceEnabled(),
+      builder: (context, serviceSnapshot) {
+        if (serviceSnapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 12),
+                  Text('Checking location services...'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final serviceEnabled = serviceSnapshot.data ?? false;
+
+        return FutureBuilder<PermissionStatus>(
+          future: Permission.locationWhenInUse.status,
+          builder: (context, permissionSnapshot) {
+            if (permissionSnapshot.connectionState == ConnectionState.waiting) {
+              return const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(width: 12),
+                      Text('Checking permissions...'),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            final permissionStatus = permissionSnapshot.data ?? PermissionStatus.denied;
+            final hasWhenInUse = permissionStatus == PermissionStatus.granted;
+
+            // Check background permission for Android 10+
+            return FutureBuilder<PermissionStatus>(
+              future: Permission.locationAlways.status,
+              builder: (context, backgroundSnapshot) {
+                final backgroundStatus = backgroundSnapshot.data ?? PermissionStatus.denied;
+                final hasBackground = backgroundStatus == PermissionStatus.granted;
+
+                if (!serviceEnabled || !hasWhenInUse) {
+                  return Card(
+                    color: Colors.orange.withOpacity(0.1),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(
+                            !serviceEnabled 
+                                ? Icons.location_disabled 
+                                : Icons.location_off,
+                            color: Colors.orange,
+                            size: 32,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  !serviceEnabled 
+                                      ? 'Location Services Disabled' 
+                                      : 'Location Permission Required',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  !serviceEnabled 
+                                      ? 'Please enable location services in your device settings to allow Run Coach to track your runs.'
+                                      : 'Run Coach needs location permission to track your runs. Tap Enable to grant permission.',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                // If we have whenInUse but not background, show a less critical warning
+                if (hasWhenInUse && !hasBackground) {
+                  return Card(
+                    color: Colors.blue.withOpacity(0.1),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, color: Colors.blue, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Background Location Not Enabled',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'For continuous tracking when app is in background, enable "Allow all the time" in location settings.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: openAppSettings,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            ),
+                            child: const Text('Settings', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                // All permissions granted
+                return const SizedBox.shrink();
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }
