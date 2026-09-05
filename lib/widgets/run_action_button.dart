@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// A floating action button for run actions (start/stop)
 class RunActionButton extends StatelessWidget {
@@ -17,8 +18,21 @@ class RunActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[RunActionButton] Building - isRunActive: $isRunActive');
+    debugPrint('[RunActionButton] onStart: ${onStart != null}');
+    debugPrint('[RunActionButton] onStop: ${onStop != null}');
+    
     return FloatingActionButton(
-      onPressed: _getOnPressed(),
+      onPressed: () {
+        debugPrint('[RunActionButton] FAB pressed - isRunActive: $isRunActive');
+        if (isRunActive) {
+          debugPrint('[RunActionButton] Calling onStop');
+          onStop?.call();
+        } else {
+          debugPrint('[RunActionButton] Calling onStart');
+          onStart?.call();
+        }
+      },
       backgroundColor: _getBackgroundColor(),
       foregroundColor: _getForegroundColor(),
       child: _getIcon(),
@@ -26,14 +40,6 @@ class RunActionButton extends StatelessWidget {
       elevation: 4,
       shape: const CircleBorder(),
     );
-  }
-
-  /// Get the onPressed callback
-  VoidCallback? _getOnPressed() {
-    if (isRunActive) {
-      return onStop ?? onStop;
-    }
-    return onStart ?? onResume;
   }
 
   /// Get the background color

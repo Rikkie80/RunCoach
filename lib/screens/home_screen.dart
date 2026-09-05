@@ -21,18 +21,24 @@ class HomeScreen extends ConsumerWidget {
     final historyAsync = ref.watch(runHistoryProvider);
     final statsAsync = ref.watch(overallStatisticsProvider);
 
+    debugPrint('[HomeScreen] Build - isRunActive: $isRunActive');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Run Coach'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
+            onPressed: () {
+              debugPrint('[HomeScreen] Settings button pressed');
+              context.push('/settings');
+            },
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          debugPrint('[HomeScreen] Refreshing data...');
           ref.refresh(runHistoryProvider);
           ref.refresh(overallStatisticsProvider);
         },
@@ -62,40 +68,82 @@ class HomeScreen extends ConsumerWidget {
       floatingActionButton: RunActionButton(
         isRunActive: isRunActive,
         onStart: () async {
-          // Check permissions before starting
-          final hasPermissions = await _checkAndRequestPermissions(context);
-          if (!hasPermissions) {
-            return;
-          }
-          
-          final notifier = ref.read(currentRunSessionProvider.notifier);
-          final success = await notifier.startRun();
-          if (success) {
-            context.push('/run');
-          } else {
+          debugPrint('[HomeScreen] FAB onStart called');
+          try {
+            final hasPermissions = await _checkAndRequestPermissions(context);
+            debugPrint('[HomeScreen] hasPermissions: $hasPermissions');
+            
+            if (!hasPermissions) {
+              debugPrint('[HomeScreen] Permissions not granted, returning');
+              return;
+            }
+            
+            debugPrint('[HomeScreen] Permissions OK, starting run...');
+            final notifier = ref.read(currentRunSessionProvider.notifier);
+            final success = await notifier.startRun();
+            debugPrint('[HomeScreen] startRun result: $success');
+            
+            if (success) {
+              debugPrint('[HomeScreen] Run started, navigating to /run');
+              context.push('/run');
+            } else {
+              debugPrint('[HomeScreen] Failed to start run');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Failed to start run. Please check location permissions.'),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          } catch (e, stackTrace) {
+            debugPrint('[HomeScreen] ERROR in onStart: $e');
+            debugPrint('[HomeScreen] Stack trace: $stackTrace');
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to start run. Please check location permissions.'),
-                duration: Duration(seconds: 3),
+              SnackBar(
+                content: Text('Error starting run: $e'),
+                duration: const Duration(seconds: 5),
               ),
             );
           }
         },
         onResume: () async {
-          final hasPermissions = await _checkAndRequestPermissions(context);
-          if (!hasPermissions) {
-            return;
+          debugPrint('[HomeScreen] FAB onResume called');
+          try {
+            final hasPermissions = await _checkAndRequestPermissions(context);
+            if (!hasPermissions) {
+              return;
+            }
+            
+            final notifier = ref.read(currentRunSessionProvider.notifier);
+            await notifier.resumeRun();
+            context.push('/run');
+          } catch (e) {
+            debugPrint('[HomeScreen] ERROR in onResume: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error resuming run: $e'),
+                duration: const Duration(seconds: 3),
+              ),
+            );
           }
-          
-          final notifier = ref.read(currentRunSessionProvider.notifier);
-          await notifier.resumeRun();
-          context.push('/run');
         },
         onStop: () async {
-          final notifier = ref.read(currentRunSessionProvider.notifier);
-          final session = await notifier.stopRun();
-          if (session != null) {
-            context.push('/run/summary', extra: session);
+          debugPrint('[HomeScreen] FAB onStop called');
+          try {
+            final notifier = ref.read(currentRunSessionProvider.notifier);
+            final session = await notifier.stopRun();
+            debugPrint('[HomeScreen] stopRun result: ${session?.id}');
+            if (session != null) {
+              context.push('/run/summary', extra: session);
+            }
+          } catch (e) {
+            debugPrint('[HomeScreen] ERROR in onStop: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error stopping run: $e'),
+                duration: const Duration(seconds: 3),
+              ),
+            );
           }
         },
       ),
@@ -104,105 +152,119 @@ class HomeScreen extends ConsumerWidget {
 
   /// Check and request permissions with user feedback
   Future<bool> _checkAndRequestPermissions(BuildContext context) async {
-    debugPrint('[HomeScreen] Checking permissions...');
+    debugPrint('[HomeScreen._checkAndRequestPermissions] Called');
     
-    // Check location service status
-    final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
-    debugPrint('[HomeScreen] Location service enabled: $isLocationEnabled');
-    
-    if (!isLocationEnabled) {
-      debugPrint('[HomeScreen] Location services are disabled');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please enable location services in your device settings'),
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'OPEN SETTINGS',
-            onPressed: (() async {
-              debugPrint('[HomeScreen] Opening app settings');
-              await openAppSettings();
-            }),
-          ),
-        ),
-      );
-      return false;
-    }
-
-    // Check and request whenInUse permission
-    final whenInUseStatus = await Permission.locationWhenInUse.status;
-    debugPrint('[HomeScreen] locationWhenInUse status: $whenInUseStatus');
-    
-    if (whenInUseStatus == PermissionStatus.denied) {
-      debugPrint('[HomeScreen] Requesting locationWhenInUse...');
-      final result = await Permission.locationWhenInUse.request();
-      debugPrint('[HomeScreen] locationWhenInUse request result: $result');
+    try {
+      // Check location service status
+      final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+      debugPrint('[HomeScreen._checkAndRequestPermissions] Location service enabled: $isLocationEnabled');
       
-      if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
-        debugPrint('[HomeScreen] Permission denied');
+      if (!isLocationEnabled) {
+        debugPrint('[HomeScreen._checkAndRequestPermissions] Location services disabled');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location permission is required to track your runs'),
-            duration: Duration(seconds: 5),
+          SnackBar(
+            content: const Text('Please enable location services in your device settings'),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OPEN SETTINGS',
+              onPressed: (() async {
+                debugPrint('[HomeScreen] Opening app settings');
+                await openAppSettings();
+              }),
+            ),
           ),
         );
         return false;
       }
-    } else if (whenInUseStatus == PermissionStatus.deniedForever) {
-      debugPrint('[HomeScreen] Permission denied forever');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Location permission is permanently denied. Please enable it in app settings.'),
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'OPEN SETTINGS',
-            onPressed: (() async {
-              debugPrint('[HomeScreen] Opening app settings for permanently denied');
-              await openAppSettings();
-            }),
-          ),
-        ),
-      );
-      return false;
-    }
 
-    // Check Geolocator permission as well
-    try {
-      final geoPermission = await Geolocator.checkPermission();
-      debugPrint('[HomeScreen] Geolocator permission: $geoPermission');
+      // Check and request whenInUse permission
+      final whenInUseStatus = await Permission.locationWhenInUse.status;
+      debugPrint('[HomeScreen._checkAndRequestPermissions] locationWhenInUse status: $whenInUseStatus');
       
-      if (geoPermission == LocationPermission.denied) {
-        debugPrint('[HomeScreen] Requesting Geolocator permission...');
-        final result = await Geolocator.requestPermission();
-        debugPrint('[HomeScreen] Geolocator permission result: $result');
+      if (whenInUseStatus == PermissionStatus.denied) {
+        debugPrint('[HomeScreen._checkAndRequestPermissions] Requesting locationWhenInUse...');
+        final result = await Permission.locationWhenInUse.request();
+        debugPrint('[HomeScreen._checkAndRequestPermissions] locationWhenInUse request result: $result');
         
-        if (result == LocationPermission.denied || result == LocationPermission.deniedForever) {
-          debugPrint('[HomeScreen] Geolocator permission denied');
+        if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
+          debugPrint('[HomeScreen._checkAndRequestPermissions] Permission denied');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Location permission is required for tracking'),
-              duration: Duration(seconds: 3),
+              content: Text('Location permission is required to track your runs'),
+              duration: Duration(seconds: 5),
             ),
           );
           return false;
         }
+      } else if (whenInUseStatus == PermissionStatus.deniedForever) {
+        debugPrint('[HomeScreen._checkAndRequestPermissions] Permission denied forever');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location permission is permanently denied. Please enable it in app settings.'),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OPEN SETTINGS',
+              onPressed: (() async {
+                debugPrint('[HomeScreen] Opening app settings for permanently denied');
+                await openAppSettings();
+              }),
+            ),
+          ),
+        );
+        return false;
       }
-    } catch (e) {
-      debugPrint('[HomeScreen] Geolocator check failed: $e');
+
+      // Check Geolocator permission as well
+      try {
+        final geoPermission = await Geolocator.checkPermission();
+        debugPrint('[HomeScreen._checkAndRequestPermissions] Geolocator permission: $geoPermission');
+        
+        if (geoPermission == LocationPermission.denied) {
+          debugPrint('[HomeScreen._checkAndRequestPermissions] Requesting Geolocator permission...');
+          final result = await Geolocator.requestPermission();
+          debugPrint('[HomeScreen._checkAndRequestPermissions] Geolocator permission result: $result');
+          
+          if (result == LocationPermission.denied || result == LocationPermission.deniedForever) {
+            debugPrint('[HomeScreen._checkAndRequestPermissions] Geolocator permission denied');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Location permission is required for tracking'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return false;
+          }
+        }
+      } catch (e) {
+        debugPrint('[HomeScreen._checkAndRequestPermissions] Geolocator check failed: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking location: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return false;
+      }
+
+      debugPrint('[HomeScreen._checkAndRequestPermissions] All permissions granted!');
+      return true;
+      
+    } catch (e, stackTrace) {
+      debugPrint('[HomeScreen._checkAndRequestPermissions] ERROR: $e');
+      debugPrint('[HomeScreen._checkAndRequestPermissions] Stack: $stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error checking location: $e'),
-          duration: const Duration(seconds: 3),
+          content: Text('Error checking permissions: $e'),
+          duration: const Duration(seconds: 5),
         ),
       );
       return false;
     }
-
-    debugPrint('[HomeScreen] All permissions granted!');
-    return true;
   }
 
   /// Build quick action buttons
   Widget _buildQuickActions(BuildContext context, bool isRunActive, WidgetRef ref) {
+    debugPrint('[HomeScreen._buildQuickActions] isRunActive: $isRunActive');
     return Card(
       elevation: 4,
       child: Padding(
@@ -220,27 +282,18 @@ class HomeScreen extends ConsumerWidget {
                   onTap: isRunActive 
                     ? null 
                     : () async {
-                        debugPrint('[HomeScreen] Start button pressed');
-                        final hasPermissions = await _checkAndRequestPermissions(context);
-                        if (!hasPermissions) {
-                          debugPrint('[HomeScreen] Permissions not granted');
-                          return;
-                        }
-                        
-                        debugPrint('[HomeScreen] Starting run...');
-                        final notifier = ref.read(currentRunSessionProvider.notifier);
-                        final success = await notifier.startRun();
-                        debugPrint('[HomeScreen] Start run result: $success');
-                        
-                        if (success) {
-                          context.push('/run');
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Failed to start run'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                        debugPrint('[HomeScreen] Quick Start button pressed');
+                        try {
+                          final hasPermissions = await _checkAndRequestPermissions(context);
+                          if (!hasPermissions) return;
+                          
+                          final notifier = ref.read(currentRunSessionProvider.notifier);
+                          final success = await notifier.startRun();
+                          if (success) {
+                            context.push('/run');
+                          }
+                        } catch (e) {
+                          debugPrint('[HomeScreen] Quick Start ERROR: $e');
                         }
                       },
                 ),
@@ -529,7 +582,7 @@ class HomeScreen extends ConsumerWidget {
                     Text(
                       stats.formattedPace,
                       style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWidth.bold,
                       ),
                     ),
                   ],
@@ -571,10 +624,15 @@ class PermissionStatusWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    debugPrint('[PermissionStatusWidget] Building...');
+    
     return FutureBuilder<bool>(
       future: Geolocator.isLocationServiceEnabled(),
       builder: (context, serviceSnapshot) {
+        debugPrint('[PermissionStatusWidget] Location service check: ${serviceSnapshot.connectionState}');
+        
         if (serviceSnapshot.connectionState == ConnectionState.waiting) {
+          debugPrint('[PermissionStatusWidget] Waiting for location service check');
           return const Card(
             child: Padding(
               padding: EdgeInsets.all(12),
@@ -595,7 +653,10 @@ class PermissionStatusWidget extends ConsumerWidget {
         return FutureBuilder<PermissionStatus>(
           future: Permission.locationWhenInUse.status,
           builder: (context, permissionSnapshot) {
+            debugPrint('[PermissionStatusWidget] Permission check: ${permissionSnapshot.connectionState}');
+            
             if (permissionSnapshot.connectionState == ConnectionState.waiting) {
+              debugPrint('[PermissionStatusWidget] Waiting for permission check');
               return const Card(
                 child: Padding(
                   padding: EdgeInsets.all(12),
@@ -618,6 +679,8 @@ class PermissionStatusWidget extends ConsumerWidget {
             return FutureBuilder<PermissionStatus>(
               future: Permission.locationAlways.status,
               builder: (context, backgroundSnapshot) {
+                debugPrint('[PermissionStatusWidget] Background permission check: ${backgroundSnapshot.connectionState}');
+                
                 final backgroundStatus = backgroundSnapshot.data ?? PermissionStatus.denied;
                 debugPrint('[PermissionStatusWidget] locationAlways: $backgroundStatus');
                 final hasBackground = backgroundStatus == PermissionStatus.granted;
@@ -711,13 +774,20 @@ class PermissionStatusWidget extends ConsumerWidget {
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () async {
-                              debugPrint('[PermissionStatusWidget] Requesting locationWhenInUse');
-                              final result = await Permission.locationWhenInUse.request();
-                              debugPrint('[PermissionStatusWidget] Request result: $result');
-                              if (result == PermissionStatus.granted) {
-                                // Request background location as well
-                                final backgroundResult = await Permission.locationAlways.request();
-                                debugPrint('[PermissionStatusWidget] Background request result: $backgroundResult');
+                              debugPrint('[PermissionStatusWidget] Enable button pressed - requesting permissions');
+                              try {
+                                final result = await Permission.locationWhenInUse.request();
+                                debugPrint('[PermissionStatusWidget] Request result: $result');
+                                
+                                if (result == PermissionStatus.granted) {
+                                  // Request background location as well
+                                  final backgroundResult = await Permission.locationAlways.request();
+                                  debugPrint('[PermissionStatusWidget] Background request result: $backgroundResult');
+                                } else {
+                                  debugPrint('[PermissionStatusWidget] Permission denied: $result');
+                                }
+                              } catch (e) {
+                                debugPrint('[PermissionStatusWidget] ERROR requesting permission: $e');
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -770,7 +840,7 @@ class PermissionStatusWidget extends ConsumerWidget {
                           const SizedBox(width: 8),
                           TextButton(
                             onPressed: () async {
-                              debugPrint('[PermissionStatusWidget] Opening settings for background location');
+                              debugPrint('[PermissionStatusWidget] Settings button pressed');
                               await openAppSettings();
                             },
                             style: TextButton.styleFrom(
@@ -785,7 +855,7 @@ class PermissionStatusWidget extends ConsumerWidget {
                 }
 
                 // All permissions granted
-                debugPrint('[PermissionStatusWidget] All permissions OK');
+                debugPrint('[PermissionStatusWidget] All permissions OK - hiding widget');
                 return const SizedBox.shrink();
               },
             );
