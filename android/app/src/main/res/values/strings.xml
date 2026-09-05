@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name -->
+    <string name="app_name">Run Coach</string>
+    
+    <!-- Geolocator notification channel -->
+    <string name="geolocator_notification_channel">Location Tracking</string>
+    <string name="geolocator_notification_channel_description">Required for tracking your runs in the background</string>
+    
+    <!-- Location service notifications -->
+    <string name="location_service_notification_title">Run Coach is tracking</string>
+    <string name="location_service_notification_text">Tracking your run location</string>
+    
+    <!-- Permission explanations -->
+    <string name="location_permission_rationale">Run Coach needs location permission to track your runs and calculate distance, speed, and pace.</string>
+    <string name="background_location_permission_rationale">Run Coach needs background location to continue tracking when the app is minimized or the screen is off.</string>
+</resources>

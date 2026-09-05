@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../providers/run_provider.dart';
 import '../models/run_session.dart';
@@ -71,6 +72,13 @@ class HomeScreen extends ConsumerWidget {
           final success = await notifier.startRun();
           if (success) {
             context.push('/run');
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to start run. Please check location permissions.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
           }
         },
         onResume: () async {
@@ -96,16 +104,24 @@ class HomeScreen extends ConsumerWidget {
 
   /// Check and request permissions with user feedback
   Future<bool> _checkAndRequestPermissions(BuildContext context) async {
+    debugPrint('[HomeScreen] Checking permissions...');
+    
     // Check location service status
     final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+    debugPrint('[HomeScreen] Location service enabled: $isLocationEnabled');
+    
     if (!isLocationEnabled) {
+      debugPrint('[HomeScreen] Location services are disabled');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enable location services in your device settings'),
-          duration: Duration(seconds: 5),
+        SnackBar(
+          content: const Text('Please enable location services in your device settings'),
+          duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'OPEN SETTINGS',
-            onPressed: openAppSettings,
+            onPressed: (() async {
+              debugPrint('[HomeScreen] Opening app settings');
+              await openAppSettings();
+            }),
           ),
         ),
       );
@@ -114,47 +130,74 @@ class HomeScreen extends ConsumerWidget {
 
     // Check and request whenInUse permission
     final whenInUseStatus = await Permission.locationWhenInUse.status;
+    debugPrint('[HomeScreen] locationWhenInUse status: $whenInUseStatus');
+    
     if (whenInUseStatus == PermissionStatus.denied) {
+      debugPrint('[HomeScreen] Requesting locationWhenInUse...');
       final result = await Permission.locationWhenInUse.request();
+      debugPrint('[HomeScreen] locationWhenInUse request result: $result');
+      
       if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
+        debugPrint('[HomeScreen] Permission denied');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Location permission is required to track your runs'),
             duration: Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'REQUEST AGAIN',
-              onPressed: null,
-            ),
           ),
         );
         return false;
       }
     } else if (whenInUseStatus == PermissionStatus.deniedForever) {
+      debugPrint('[HomeScreen] Permission denied forever');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Location permission is permanently denied. Please enable it in app settings.'),
-          duration: Duration(seconds: 5),
+        SnackBar(
+          content: const Text('Location permission is permanently denied. Please enable it in app settings.'),
+          duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'OPEN SETTINGS',
-            onPressed: openAppSettings,
+            onPressed: (() async {
+              debugPrint('[HomeScreen] Opening app settings for permanently denied');
+              await openAppSettings();
+            }),
           ),
         ),
       );
       return false;
     }
 
-    // For Android 10+, check background location
-    final backgroundStatus = await Permission.locationAlways.status;
-    if (backgroundStatus == PermissionStatus.denied) {
-      // Request background location
-      final result = await Permission.locationAlways.request();
-      if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
-        // This is OK - we can still track when app is in foreground
-        // But show a message that background tracking won't work
-        debugPrint('Background location not granted, but foreground tracking will work');
+    // Check Geolocator permission as well
+    try {
+      final geoPermission = await Geolocator.checkPermission();
+      debugPrint('[HomeScreen] Geolocator permission: $geoPermission');
+      
+      if (geoPermission == LocationPermission.denied) {
+        debugPrint('[HomeScreen] Requesting Geolocator permission...');
+        final result = await Geolocator.requestPermission();
+        debugPrint('[HomeScreen] Geolocator permission result: $result');
+        
+        if (result == LocationPermission.denied || result == LocationPermission.deniedForever) {
+          debugPrint('[HomeScreen] Geolocator permission denied');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission is required for tracking'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+          return false;
+        }
       }
+    } catch (e) {
+      debugPrint('[HomeScreen] Geolocator check failed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error checking location: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return false;
     }
 
+    debugPrint('[HomeScreen] All permissions granted!');
     return true;
   }
 
@@ -177,13 +220,27 @@ class HomeScreen extends ConsumerWidget {
                   onTap: isRunActive 
                     ? null 
                     : () async {
+                        debugPrint('[HomeScreen] Start button pressed');
                         final hasPermissions = await _checkAndRequestPermissions(context);
-                        if (!hasPermissions) return;
+                        if (!hasPermissions) {
+                          debugPrint('[HomeScreen] Permissions not granted');
+                          return;
+                        }
                         
+                        debugPrint('[HomeScreen] Starting run...');
                         final notifier = ref.read(currentRunSessionProvider.notifier);
                         final success = await notifier.startRun();
+                        debugPrint('[HomeScreen] Start run result: $success');
+                        
                         if (success) {
                           context.push('/run');
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to start run'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                         }
                       },
                 ),
@@ -192,14 +249,20 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.history,
                   label: 'History',
                   color: Colors.blue,
-                  onTap: () => context.push('/history'),
+                  onTap: () {
+                    debugPrint('[HomeScreen] History button pressed');
+                    context.push('/history');
+                  },
                 ),
                 _buildQuickActionButton(
                   context,
                   icon: Icons.analytics,
                   label: 'Stats',
                   color: Colors.orange,
-                  onTap: () => context.push('/history'),
+                  onTap: () {
+                    debugPrint('[HomeScreen] Stats button pressed');
+                    context.push('/history');
+                  },
                 ),
               ],
             ),
@@ -527,6 +590,7 @@ class PermissionStatusWidget extends ConsumerWidget {
         }
 
         final serviceEnabled = serviceSnapshot.data ?? false;
+        debugPrint('[PermissionStatusWidget] Location service enabled: $serviceEnabled');
 
         return FutureBuilder<PermissionStatus>(
           future: Permission.locationWhenInUse.status,
@@ -547,6 +611,7 @@ class PermissionStatusWidget extends ConsumerWidget {
             }
 
             final permissionStatus = permissionSnapshot.data ?? PermissionStatus.denied;
+            debugPrint('[PermissionStatusWidget] locationWhenInUse: $permissionStatus');
             final hasWhenInUse = permissionStatus == PermissionStatus.granted;
 
             // Check background permission for Android 10+
@@ -554,9 +619,63 @@ class PermissionStatusWidget extends ConsumerWidget {
               future: Permission.locationAlways.status,
               builder: (context, backgroundSnapshot) {
                 final backgroundStatus = backgroundSnapshot.data ?? PermissionStatus.denied;
+                debugPrint('[PermissionStatusWidget] locationAlways: $backgroundStatus');
                 final hasBackground = backgroundStatus == PermissionStatus.granted;
 
-                if (!serviceEnabled || !hasWhenInUse) {
+                if (!serviceEnabled) {
+                  debugPrint('[PermissionStatusWidget] Showing: Location services disabled');
+                  return Card(
+                    color: Colors.red.withOpacity(0.1),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_disabled, color: Colors.red, size: 32),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Location Services Disabled',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Please enable location services in your device settings to allow Run Coach to track your runs.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () async {
+                              debugPrint('[PermissionStatusWidget] Opening settings for location services');
+                              await openAppSettings();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            ),
+                            child: const Text('Enable', style: TextStyle(fontSize: 14)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (!hasWhenInUse) {
+                  debugPrint('[PermissionStatusWidget] Showing: Location permission required');
                   return Card(
                     color: Colors.orange.withOpacity(0.1),
                     elevation: 4,
@@ -564,40 +683,48 @@ class PermissionStatusWidget extends ConsumerWidget {
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          Icon(
-                            !serviceEnabled 
-                                ? Icons.location_disabled 
-                                : Icons.location_off,
-                            color: Colors.orange,
-                            size: 32,
-                          ),
+                          const Icon(Icons.location_off, color: Colors.orange, size: 32),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  !serviceEnabled 
-                                      ? 'Location Services Disabled' 
-                                      : 'Location Permission Required',
-                                  style: const TextStyle(
+                                const Text(
+                                  'Location Permission Required',
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                     color: Colors.orange,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  !serviceEnabled 
-                                      ? 'Please enable location services in your device settings to allow Run Coach to track your runs.'
-                                      : 'Run Coach needs location permission to track your runs. Tap Enable to grant permission.',
-                                  style: const TextStyle(
+                                const Text(
+                                  'Run Coach needs location permission to track your runs. Tap Enable to grant permission.',
+                                  style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey,
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () async {
+                              debugPrint('[PermissionStatusWidget] Requesting locationWhenInUse');
+                              final result = await Permission.locationWhenInUse.request();
+                              debugPrint('[PermissionStatusWidget] Request result: $result');
+                              if (result == PermissionStatus.granted) {
+                                // Request background location as well
+                                final backgroundResult = await Permission.locationAlways.request();
+                                debugPrint('[PermissionStatusWidget] Background request result: $backgroundResult');
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            ),
+                            child: const Text('Enable', style: TextStyle(fontSize: 14)),
                           ),
                         ],
                       ),
@@ -607,6 +734,7 @@ class PermissionStatusWidget extends ConsumerWidget {
 
                 // If we have whenInUse but not background, show a less critical warning
                 if (hasWhenInUse && !hasBackground) {
+                  debugPrint('[PermissionStatusWidget] Showing: Background location not enabled');
                   return Card(
                     color: Colors.blue.withOpacity(0.1),
                     elevation: 2,
@@ -629,11 +757,11 @@ class PermissionStatusWidget extends ConsumerWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                Text(
+                                const Text(
                                   'For continuous tracking when app is in background, enable "Allow all the time" in location settings.',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey.shade700,
+                                    color: Colors.grey,
                                   ),
                                 ),
                               ],
@@ -641,7 +769,10 @@ class PermissionStatusWidget extends ConsumerWidget {
                           ),
                           const SizedBox(width: 8),
                           TextButton(
-                            onPressed: openAppSettings,
+                            onPressed: () async {
+                              debugPrint('[PermissionStatusWidget] Opening settings for background location');
+                              await openAppSettings();
+                            },
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             ),
@@ -654,6 +785,7 @@ class PermissionStatusWidget extends ConsumerWidget {
                 }
 
                 // All permissions granted
+                debugPrint('[PermissionStatusWidget] All permissions OK');
                 return const SizedBox.shrink();
               },
             );

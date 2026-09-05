@@ -4,27 +4,17 @@
     package="com.example.runcoach">
 
     <!-- ===== LOCATIE PERMISSIES ==== -->
-    <!-- Voor Android 12 en hoger -->
-    <uses-permission 
-        android:name="android.permission.ACCESS_FINE_LOCATION" 
-        tools:node="merge" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     
+    <!-- Achtergrond locatie - voor Android 10+ (API 29) -->
+    <!-- Op Android 13+ (API 33) moet dit apart gevraagd worden -->
     <uses-permission 
-        android:name="android.permission.ACCESS_COARSE_LOCATION" 
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION" 
         tools:node="merge" />
-    
-    <!-- Achtergrond locatie - vereist voor Android 10+ (Q) -->
-    <!-- Voor Android 13+ (Tiramisu) moet maxSdkVersion worden gespecificeerd -->
-    <uses-permission 
-        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
-        android:maxSdkVersion="32"
-        tools:node="merge" 
-        tools:targetApi="q" />
 
     <!-- Foreground service voor locatie tracking -->
-    <uses-permission 
-        android:name="android.permission.FOREGROUND_SERVICE"
-        tools:node="merge" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <!-- Voor notificaties en achtergrond services -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -64,7 +54,7 @@
             </intent-filter>
         </activity>
 
-        <!-- ===== LOCATION SERVICE (voor achtergrond tracking) ==== -->
+        <!-- ===== LOCATION SERVICE ==== -->
         <service
             android:name="com.baseflow.geolocator.service.LocationService"
             android:foregroundServiceType="location"
@@ -75,5 +65,18 @@
             android:name="com.baseflow.geolocator.service.LocationForegroundService"
             android:foregroundServiceType="location"
             android:exported="false" />
+            
+        <!-- ===== FOREGROUND SERVICE NOTIFICATION CHANNEL ==== -->
+        <meta-data
+            android:name="com.baseflow.geolocator.service.notification_channel"
+            android:value="@string/geolocator_notification_channel" />
+            
+        <meta-data
+            android:name="com.baseflow.geolocator.service.notification_channel_description"
+            android:value="@string/geolocator_notification_channel_description" />
+            
+        <meta-data
+            android:name="com.baseflow.geolocator.service.notification_icon"
+            android:resource="@mipmap/ic_launcher" />
     </application>
 </manifest>
