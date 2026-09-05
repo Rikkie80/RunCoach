@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.example.runcoach">
-    
+
+    <!-- Locatie permissies -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="merge" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    
+
     <application
         android:label="Run Coach"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true">
-        
+        android:requestLegacyExternalStorage="true"
+        android:usesCleartextTraffic="true">
+
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
@@ -22,23 +25,25 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-            
+
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
-            
+
             <meta-data
                 android:name="io.flutter.embedding.android.SplashScreenDrawable"
                 android:resource="@drawable/launch_background" />
-            
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
-        <meta-data
-            android:name="flutterEmbedding"
-            android:value="2" />
+
+        <!-- Service for background location tracking -->
+        <service
+            android:name="com.baseflow.geolocator.service.LocationService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
     </application>
 </manifest>

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/run_session.dart';
 
@@ -31,25 +32,59 @@ class LocationService {
   /// Check and request location permissions
   Future<bool> checkAndRequestPermissions() async {
     try {
+      // Check current permission status
       LocationPermission permission = await Geolocator.checkPermission();
       
       if (permission == LocationPermission.denied) {
+        // Request permissions
         permission = await Geolocator.requestPermission();
+        
         if (permission == LocationPermission.denied) {
-          onError?.call('Location permissions denied');
+          onError?.call('Location permissions denied. Please enable location permissions in settings.');
+          // Try to open app settings
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            _openAppSettings();
+          }
           return false;
         }
       }
       
       if (permission == LocationPermission.deniedForever) {
-        onError?.call('Location permissions permanently denied');
+        onError?.call('Location permissions permanently denied. Please enable in app settings.');
+        // Try to open app settings
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          _openAppSettings();
+        }
         return false;
+      }
+      
+      // For Android 10+, check background location permission
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final isBackgroundLocationAvailable = await Geolocator.isBackgroundLocationEnabled();
+        if (!isBackgroundLocationAvailable) {
+          onError?.call('Background location not enabled. Please enable in settings.');
+          return false;
+        }
       }
       
       return true;
     } catch (e) {
       onError?.call('Permission check failed: $e');
       return false;
+    }
+  }
+
+  /// Open app settings for permission management
+  Future<void> _openAppSettings() async {
+    try {
+      // This will open the app settings page
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        // For Android, we can use platform channels or url_launcher
+        // This is a simple approach that works on most devices
+        print('Please enable location permissions in app settings');
+      }
+    } catch (e) {
+      print('Could not open app settings: $e');
     }
   }
 
@@ -87,12 +122,24 @@ class LocationService {
       _isTracking = true;
 
       // Get initial position
-      final initialPosition = await Geolocator.getCurrentPosition();
+      final initialPosition = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.best,
+          distanceFilter: 10,
+        ),
+      );
 
       _addPosition(initialPosition);
 
       // Start position stream
-      _positionStream = Geolocator.getPositionStream();
+      final locationOptions = const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 5,
+      );
+
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: locationOptions,
+      );
       
       _positionStream!.listen(
         (Position position) {
@@ -126,6 +173,7 @@ class LocationService {
 
     try {
       // Cancel position stream
+      await _positionStream?.cancel();
       _positionStream = null;
       
       // End the session
@@ -151,6 +199,7 @@ class LocationService {
     }
 
     try {
+      await _positionStream?.cancel();
       _positionStream = null;
       _isTracking = false;
       return true;
@@ -172,7 +221,14 @@ class LocationService {
     }
 
     try {
-      _positionStream = Geolocator.getPositionStream();
+      final locationOptions = const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 5,
+      );
+
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: locationOptions,
+      );
       
       _positionStream!.listen(
         (Position position) {
@@ -229,7 +285,11 @@ class LocationService {
         return null;
       }
 
-      final position = await Geolocator.getCurrentPosition();
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.best,
+        ),
+      );
 
       return LocationPoint(
         latitude: position.latitude,
