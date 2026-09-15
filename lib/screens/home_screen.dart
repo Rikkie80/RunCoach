@@ -18,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isRunActive = ref.watch(isRunActiveProvider);
+    final isRunPaused = ref.watch(isRunPausedProvider);
     final historyAsync = ref.watch(runHistoryProvider);
     final statsAsync = ref.watch(overallStatisticsProvider);
 
@@ -61,6 +62,7 @@ class HomeScreen extends ConsumerWidget {
       ),
       floatingActionButton: RunActionButton(
         isRunActive: isRunActive,
+        isPaused: isRunPaused,
         onStart: () async {
           // Check permissions before starting
           final hasPermissions = await _checkAndRequestPermissions(context);
@@ -147,22 +149,10 @@ class HomeScreen extends ConsumerWidget {
       return false;
     }
 
-    // For Android 16, also check foreground service permission
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      final foregroundStatus = await Permission.foregroundService.status;
-      if (foregroundStatus == PermissionStatus.denied) {
-        final result = await Permission.foregroundService.request();
-        if (result == PermissionStatus.denied || result == PermissionStatus.deniedForever) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Foreground service permission is required for location tracking'),
-              duration: Duration(seconds: 5),
-            ),
-          );
-          return false;
-        }
-      }
-    }
+    // Note: FOREGROUND_SERVICE / FOREGROUND_SERVICE_LOCATION are Android
+    // "normal" permissions granted automatically at install time from the
+    // manifest — permission_handler has no runtime check/request API for
+    // them, so there's nothing to do here.
 
     // Check Geolocator permission as well
     try {
@@ -567,14 +557,10 @@ class PermissionStatusWidget extends ConsumerWidget {
                 final backgroundStatus = backgroundSnapshot.data ?? PermissionStatus.denied;
                 final hasBackground = backgroundStatus == PermissionStatus.granted;
 
-                // For Android 16, also check foreground service
-                return FutureBuilder<PermissionStatus>(
-                  future: Permission.foregroundService.status,
-                  builder: (context, foregroundSnapshot) {
-                    final foregroundStatus = foregroundSnapshot.data ?? PermissionStatus.denied;
-                    final hasForeground = foregroundStatus == PermissionStatus.granted;
-
-                    if (!serviceEnabled) {
+                // FOREGROUND_SERVICE / FOREGROUND_SERVICE_LOCATION are Android
+                // "normal" permissions — granted automatically at install time
+                // from the manifest, so there's no status to check here.
+                if (!serviceEnabled) {
                       return Card(
                         color: Colors.red.withOpacity(0.1),
                         elevation: 4,
@@ -669,53 +655,6 @@ class PermissionStatusWidget extends ConsumerWidget {
                       );
                     }
 
-                    if (hasWhenInUse && !hasForeground) {
-                      return Card(
-                        color: Colors.orange.withOpacity(0.1),
-                        elevation: 4,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.settings, color: Colors.orange, size: 32),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Foreground Service Permission Required',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Tap Enable for foreground service permission.',
-                                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  await Permission.foregroundService.request();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                ),
-                                child: const Text('Enable', style: TextStyle(fontSize: 14)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
                     if (hasWhenInUse && !hasBackground) {
                       return Card(
                         color: Colors.blue.withOpacity(0.1),
@@ -760,9 +699,7 @@ class PermissionStatusWidget extends ConsumerWidget {
                       );
                     }
 
-                    return const SizedBox.shrink();
-                  },
-                );
+                return const SizedBox.shrink();
               },
             );
           },

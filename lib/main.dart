@@ -34,17 +34,11 @@ void main() async {
     debugPrint('locationWhenInUse denied - cannot request background location');
   }
   
-  // Step 3: For Android 16, also request foreground service permission
-  // This is required for continuous location tracking
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    try {
-      debugPrint('Requesting foreground service permission...');
-      final foregroundStatus = await Permission.foregroundService.request();
-      debugPrint('foregroundService: $foregroundStatus');
-    } catch (e) {
-      debugPrint('Foreground service permission not available: $e');
-    }
-  }
+  // Note: FOREGROUND_SERVICE / FOREGROUND_SERVICE_LOCATION are Android
+  // "normal" permissions. They're declared in AndroidManifest.xml and are
+  // granted automatically at install time — there's no runtime permission
+  // to request for them (and permission_handler has no such API), so there
+  // is nothing to do here.
   
   debugPrint('=== ALL PERMISSIONS REQUESTED ===');
   debugPrint('Starting app...');

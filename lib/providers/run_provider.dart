@@ -202,3 +202,15 @@ final isRunActiveProvider = Provider<bool>(
     return isActive;
   },
 );
+
+/// Provider for checking if the current run is paused (active session, but
+/// location tracking is not currently running).
+final isRunPausedProvider = Provider<bool>(
+  (ref) {
+    final session = ref.watch(currentRunSessionProvider);
+    final locationService = ref.watch(locationServiceProvider);
+    final isPaused = session != null && session.isActive && !locationService.isTracking;
+    debugPrint('[isRunPausedProvider] Run paused: $isPaused');
+    return isPaused;
+  },
+);
