@@ -89,7 +89,7 @@ class LocationService {
       }
       
       // For Android 10+ (API 29+), check background location
-      // On Android 16 (API 35), this requires explicit consent
+      // On Android 10+ (API 29+), this requires explicit consent
       if (defaultTargetPlatform == TargetPlatform.android) {
         final isBackgroundEnabled = await Geolocator.isBackgroundLocationEnabled();
         debugPrint('[LocationService] Background location enabled: $isBackgroundEnabled');

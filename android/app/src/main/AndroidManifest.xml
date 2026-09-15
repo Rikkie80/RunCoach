@@ -4,7 +4,7 @@
     package="com.example.runcoach">
 
     <!-- ============================================ -->
-    <!-- LOCATION PERMISSIONS (ANDROID 16 / API 35 COMPATIBLE) -->
+    <!-- LOCATION PERMISSIONS (Android 15 / API 35 and Android 16 / API 36 COMPATIBLE) -->
     <!-- ============================================ -->
     
     <!-- Fine location - required for precise GPS tracking -->
@@ -13,11 +13,13 @@
     <!-- Coarse location - fallback -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     
-    <!-- Background location - for Android 10-15 -->
-    <!-- On Android 16 (API 35), this requires explicit user consent -->
-    <uses-permission 
-        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
-        android:maxSdkVersion="34" />
+    <!-- Background location ("Allow all the time"). No maxSdkVersion cap —
+         this must apply on every supported version, including Android 15
+         (API 35) and Android 16 (API 36). A previous maxSdkVersion="34" here
+         (from a mistaken belief that Android 16 = API 35, when it's actually
+         API 36) made Android treat this permission as undeclared on 15/16,
+         which is why the toggle showed up grayed out in system Settings. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
     <!-- Foreground service permissions -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'app.dart';
 
@@ -12,37 +10,19 @@ void main() async {
   
   // Initialize date formatting for localization
   await initializeDateFormatting();
-  
-  // ============================================
-  // PERMISSION HANDLING FOR ANDROID 16
-  // ============================================
-  
-  debugPrint('=== STARTING RUN COACH ON ANDROID 16 ===');
-  
-  // For Android 16, we need to request permissions carefully
-  // Step 1: Request locationWhenInUse
-  debugPrint('Requesting locationWhenInUse permission...');
-  final whenInUseStatus = await Permission.locationWhenInUse.request();
-  debugPrint('locationWhenInUse: $whenInUseStatus');
-  
-  // Step 2: If granted, request locationAlways for background tracking
-  if (whenInUseStatus == PermissionStatus.granted) {
-    debugPrint('Requesting locationAlways (background) permission...');
-    final alwaysStatus = await Permission.locationAlways.request();
-    debugPrint('locationAlways: $alwaysStatus');
-  } else {
-    debugPrint('locationWhenInUse denied - cannot request background location');
-  }
-  
-  // Note: FOREGROUND_SERVICE / FOREGROUND_SERVICE_LOCATION are Android
-  // "normal" permissions. They're declared in AndroidManifest.xml and are
-  // granted automatically at install time — there's no runtime permission
-  // to request for them (and permission_handler has no such API), so there
-  // is nothing to do here.
-  
-  debugPrint('=== ALL PERMISSIONS REQUESTED ===');
-  debugPrint('Starting app...');
-  
+
+  // Location permissions are intentionally NOT requested here. Calling
+  // Permission.request() before runApp() / the first frame means Android
+  // doesn't yet have a fully resumed Activity with the Flutter engine
+  // attached, so the request can silently resolve to "denied" without ever
+  // showing the user a dialog — and on a fresh install that can burn one of
+  // Android's two prompts, leaving the permission stuck in a state where
+  // later requests return "permanently denied" with no dialog at all.
+  //
+  // Permissions are requested later, in response to the user tapping
+  // "Start" on the home screen (see home_screen.dart / location_service.dart),
+  // where the Activity is guaranteed to be resumed.
+
   runApp(
     const ProviderScope(
       child: RunCoachApp(),
